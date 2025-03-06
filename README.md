@@ -26,7 +26,7 @@ Development should be fun, not frustrating.
 <div>&nbsp</div>
 
 ## Development
-Zen is written in Zig 0.13 targeting WebAssembly. Zen uses a thin layer of JavaScript to access browser APIs.
+Zen is written in Zig 0.14 targeting WebAssembly. Zen uses a thin layer of JavaScript to access browser APIs.
 
 Zen is managed with Zig build. Refer to the `makefile` for common commands or run Zig build directly.
 
