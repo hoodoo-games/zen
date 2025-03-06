@@ -4,8 +4,14 @@
 build:
 	zig build
 
-run:
-	zig build run
-
 test:
 	zig build test
+
+clean:
+	rm -rf zig-out .zig-cache
+
+wat:
+	wasm2wat zig-out/bin/zen.wasm
+
+cloc:
+	cloc src/*
