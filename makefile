@@ -8,7 +8,7 @@ test:
 	zig build test
 
 up:
-	python3 -m http.server 8080 --bind 127.0.0.1
+	sh -c 'trap "kill 0" SIGINT; zig build --watch & python3 -m http.server 8080 --bind 127.0.0.1 & wait'
 
 clean:
 	rm -rf zig-out .zig-cache
