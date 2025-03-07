@@ -7,6 +7,9 @@ build:
 test:
 	zig build test
 
+up:
+	python3 -m http.server 8080 --bind 127.0.0.1
+
 clean:
 	rm -rf zig-out .zig-cache
 
