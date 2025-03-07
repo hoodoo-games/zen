@@ -1,4 +1,8 @@
 const std = @import("std");
 const testing = std.testing;
 
-export fn init() !void {}
+const console = @import("console.zig");
+
+export fn init() void {
+    console.log("Hello Zen, from Wasm");
+}

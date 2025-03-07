@@ -21,7 +21,6 @@ pub fn build(b: *std.Build) void {
     const lib_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
-        .single_threaded = true,
         .optimize = optimize,
         .strip = true,
     });
@@ -33,8 +32,6 @@ pub fn build(b: *std.Build) void {
 
     lib.entry = .disabled;
     lib.rdynamic = true;
-    lib.import_memory = true;
-    lib.shared_memory = false;
     lib.initial_memory = 256 * 65536;
     lib.max_memory = 512 * 65536;
 
