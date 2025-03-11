@@ -1,3 +1,5 @@
+OUT="zig-out/bin/zen.wasm"
+
 .SILENT:
 .PHONY:
 
@@ -14,7 +16,11 @@ clean:
 	rm -rf zig-out .zig-cache
 
 wat:
-	wasm2wat zig-out/bin/zen.wasm
+	wasm-dis $(OUT)
+
+stat:
+	ls -lh $(OUT)
+	echo
 
 cloc:
 	cloc src/*
