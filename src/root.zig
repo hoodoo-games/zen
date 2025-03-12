@@ -1,10 +1,14 @@
 const std = @import("std");
 const testing = std.testing;
 
+const time = @import("time.zig");
 const console = @import("console.zig");
 const math = @import("math.zig");
 
 export fn init() void {
-    const cos = math.cos(math.f32x4(0, 1, 2, 3));
-    console.log("Hello Zen, from {s}!!! {d}", .{ "Wasm", cos[0] });
+    console.log("Hello Zen, from {s}!!!", .{"Wasm"});
+}
+
+export fn update(dt: f32) void {
+    time.update_time(dt);
 }

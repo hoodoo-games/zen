@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const optimize = std.builtin.OptimizeMode.ReleaseFast;
+    const optimize = std.builtin.OptimizeMode.ReleaseSmall;
 
     // This creates a "module", which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.

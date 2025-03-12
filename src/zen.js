@@ -2,6 +2,7 @@ let mod = undefined;
 let canvas = undefined;
 let canvasToDisplaySizeMap = undefined;
 let resizeObserver = undefined;
+let prev_time = 0;
 
 async function init() {
   mod = await loadWasm("./zig-out/bin/zen.wasm", {
@@ -20,13 +21,15 @@ async function init() {
   resizeObserver = new ResizeObserver(onResize);
   resizeObserver.observe(canvas, { box: "content-box" });
 
-  requestAnimationFrame(draw);
+  requestAnimationFrame(update);
 }
 
-//TODO replace with game loop
-function draw(t) {
+function update(t) {
   resizeCanvasToDisplaySize(canvas);
-  requestAnimationFrame(draw);
+  mod.instance.exports.update(t - prev_time);
+
+  prev_time = t;
+  requestAnimationFrame(update);
 }
 
 async function loadWasm(url, imports) {
