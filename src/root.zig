@@ -12,3 +12,5 @@ export fn init() void {
 export fn update(dt: f32) void {
     time.update_time(dt);
 }
+
+//TODO fixed update
