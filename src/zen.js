@@ -65,12 +65,14 @@ function initGraphicsTest() {
     gl.VERTEX_SHADER,
     `#version 300 es
     in vec4 a_position;
+    out vec3 pos;
 
     void main() {
 
       // gl_Position is a special variable a vertex shader
       // is responsible for setting
       gl_Position = a_position;
+      pos = a_position.xyz;
     }`,
   );
 
@@ -79,11 +81,12 @@ function initGraphicsTest() {
     `#version 300 es
     precision highp float;
 
+    in vec3 pos;
     out vec4 outColor;
 
     void main() {
       // Just set the output to a constant reddish-purple
-      outColor = vec4(1, 0, 0.5, 1);
+      outColor = vec4(pos, 1);
     }`,
   );
 
@@ -96,7 +99,7 @@ function initGraphicsTest() {
   var positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
-  var positions = [0, 0, 0, 0.5, 0.7, 0];
+  var positions = [-1, -1, -1, 1, 1, -1, 1, 1, 1, -1, -1, 1];
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
   test_vao = gl.createVertexArray();
@@ -122,7 +125,7 @@ function initGraphicsTest() {
 function drawTest() {
   gl.useProgram(test_program);
   gl.bindVertexArray(test_vao);
-  gl.drawArrays(gl.TRIANGLES, 0, 3); // offset, count
+  gl.drawArrays(gl.TRIANGLES, 0, 6); // offset, count
 }
 
 function initGraphics() {
@@ -213,6 +216,7 @@ function onResize(entries) {
     const displayWidth = Math.round(width * dpr);
     const displayHeight = Math.round(height * dpr);
     canvasToDisplaySizeMap.set(entry.target, [displayWidth, displayHeight]);
+    console.log(`${width}, ${height}`);
   }
 }
 
