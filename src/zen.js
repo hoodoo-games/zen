@@ -4,11 +4,12 @@ let prev_time = 0;
 async function init() {
   mod = await loadWasm("./zig-out/bin/zen.wasm", {
     env: {
-      console_log,
+      _console_log,
+      _set_clear_color,
+      _draw,
+      _clear,
     },
   });
-
-  mod.instance.exports.init();
 
   canvas = document.querySelector("#zen-canvas");
   if (!canvas) throw new Error("canvas with id zen-canvas not found");
@@ -18,6 +19,8 @@ async function init() {
 
   initGraphics();
   initGraphicsTest();
+
+  mod.instance.exports.init();
 
   requestAnimationFrame(update);
 }
@@ -38,14 +41,14 @@ async function loadWasm(url, imports) {
   return await WebAssembly.instantiateStreaming(fetch(url), imports);
 }
 
-function mem_to_str(start_ptr, len, mem) {
+function memToStr(start_ptr, len, mem) {
   const values = new Uint8Array(mem.buffer);
   const str = values.slice(start_ptr, start_ptr + len);
   return new TextDecoder("utf-8").decode(str);
 }
 
-function console_log(msg, len) {
-  console.log(mem_to_str(msg, len, mod.instance.exports.memory));
+function _console_log(msg, len) {
+  console.log(memToStr(msg, len, mod.instance.exports.memory));
 }
 
 // --------------------------------------------------------------------------- //
@@ -102,30 +105,90 @@ function initGraphicsTest() {
   var positions = [-1, -1, -1, 1, 1, -1, 1, 1, 1, -1, -1, 1];
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-  test_vao = gl.createVertexArray();
-  gl.bindVertexArray(test_vao);
-
-  gl.enableVertexAttribArray(positionAttributeLocation);
-
-  var size = 2; // 2 components per iteration
-  var type = gl.FLOAT; // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0; // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0; // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    positionAttributeLocation,
-    size,
-    type,
-    normalize,
-    stride,
-    offset,
-  );
+  test_vao = createVertexArray([
+    {
+      location: positionAttributeLocation,
+      size: 2,
+      stride: 0,
+      offset: 0,
+    },
+  ]);
 }
 
 function drawTest() {
+  gl.clear(gl.COLOR_BUFFER_BIT);
   gl.useProgram(test_program);
   gl.bindVertexArray(test_vao);
   gl.drawArrays(gl.TRIANGLES, 0, 6); // offset, count
+  gl.bindVertexArray(null);
+}
+
+function useTexture(id, sampler) {
+  //TODO if unbound, bind and update sampler value
+}
+
+function createVertexArray(attributes) {
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+
+  // set up attributes
+  for (const a of attributes) {
+    gl.enableVertexAttribArray(a.location);
+
+    gl.vertexAttribPointer(
+      a.location,
+      a.size, // can be 1-4 (components)
+      gl.FLOAT, // 32-bit float
+      false, // do not normalize
+      a.stride, // move forward size * sizeof(type) each iteration to get the next position
+      a.offset, // start at the beginning of the buffer
+    );
+  }
+
+  gl.bindVertexArray(null);
+  return vao;
+}
+
+function _draw(queuePtr, stride, len) {
+  // get draw queue from wasm mem
+  const mem = mod.instance.exports.memory;
+  const queue = new Uint32Array(mem.buffer, queuePtr, stride * len);
+
+  for (let i = 0; i < len; i++) {
+    const offset = i * stride;
+
+    const programId = queue[0 + offset];
+    const vaoId = queue[4 + offset];
+
+    // mesh vertices
+    const geometryBufferPtr = 0;
+    const vertexCount = 0;
+
+    // textures to use
+    const textureBufferPtr = 0;
+    const textureCount = 0;
+
+    // instance vertex attribute values
+    const attributeBufferPtr = 0;
+    const instanceCount = 0;
+
+    //TODO init gl rendering state
+    // gl.useProgram(program);
+    // gl.bindVertexArray(program);
+
+    //TODO update vertex buffers
+    // attribute layout is included in the VAO
+    // zig data will follow that layout to enable direct copying
+    // [array of structures format]
+
+    //TODO render triangles
+    // gl.drawArraysInstanced(gl.TRIANGLES, 0, vertexCount, instanceCount);
+    gl.bindVertexArray(null);
+  }
+}
+
+function _clear() {
+  gl.clear(gl.COLOR_BUFFER_BIT);
 }
 
 function initGraphics() {
@@ -163,6 +226,10 @@ function createProgram(vert, frag) {
 
   console.log(gl.getProgramInfoLog(program));
   gl.deleteProgram(program);
+}
+
+function _set_clear_color(r, g, b, a) {
+  gl.clearColor(r, g, b, a);
 }
 
 // https://webgl2fundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
@@ -216,7 +283,6 @@ function onResize(entries) {
     const displayWidth = Math.round(width * dpr);
     const displayHeight = Math.round(height * dpr);
     canvasToDisplaySizeMap.set(entry.target, [displayWidth, displayHeight]);
-    console.log(`${width}, ${height}`);
   }
 }
 
