@@ -157,8 +157,13 @@ function _draw(queuePtr, stride, len) {
   for (let i = 0; i < len; i++) {
     const offset = i * stride;
 
+    // program config
     const programId = queue[0 + offset];
     const vaoId = queue[4 + offset];
+
+    //TODO init gl rendering state
+    // gl.useProgram(program);
+    // gl.bindVertexArray(program);
 
     // mesh vertices
     const geometryBufferPtr = 0;
@@ -167,16 +172,13 @@ function _draw(queuePtr, stride, len) {
     // textures to use
     const textureBufferPtr = 0;
     const textureCount = 0;
+    //TODO useTexture calls
 
     // instance vertex attribute values
     const attributeBufferPtr = 0;
     const instanceCount = 0;
 
-    //TODO init gl rendering state
-    // gl.useProgram(program);
-    // gl.bindVertexArray(program);
-
-    //TODO update vertex buffers
+    //TODO update vertex buffers (geometry and attributes)
     // attribute layout is included in the VAO
     // zig data will follow that layout to enable direct copying
     // [array of structures format]
