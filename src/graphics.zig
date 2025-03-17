@@ -13,29 +13,49 @@ pub const Texture = struct {};
 pub const Color = math.F32x4;
 
 const DrawCall = extern struct {
-    program: usize,
-    geometry: usize,
+    program_id: usize,
+    vao_id: usize,
+    geometry_buffer_ptr: usize,
+    vertex_count: usize,
+    texture_buffer_ptr: usize,
+    texture_count: usize,
+    attribute_buffer_ptr: usize,
+    instance_count: usize,
 };
 
 pub fn create_program() !Program {}
 pub fn create_texture() !Texture {}
 
 pub fn update() void {
-    draw();
+    render();
 }
 
-pub fn draw() void {
+fn render() void {
     clear();
 
+    const geo_buffer = [_]f32{ -1, -1, -1, 1, 1, -1, 1, 1, 1, -1, -1, 1 };
+    const attr_buffer = [_]f32{0};
+
     // TESTING
-    draw_queue.append(.{ .program = 0, .geometry = 0 }) catch unreachable;
+    draw_queue.append(.{
+        .program_id = 0,
+        .vao_id = 1,
+        .geometry_buffer_ptr = @intFromPtr(&geo_buffer[0]),
+        .vertex_count = geo_buffer.len / 2,
+        .texture_buffer_ptr = 0,
+        .texture_count = 0,
+        .attribute_buffer_ptr = @intFromPtr(&attr_buffer[0]),
+        .instance_count = attr_buffer.len,
+    }) catch unreachable;
 
     // prevents rendering when draw_queue has invalid pointer
     if (draw_queue.items.len < 1) return;
 
-    _draw(@intFromPtr(draw_queue.items.ptr), @sizeOf(DrawCall), draw_queue.items.len);
+    _render(@intFromPtr(draw_queue.items.ptr), @sizeOf(DrawCall), draw_queue.items.len);
     draw_queue.clearRetainingCapacity();
 }
+
+pub fn draw() void {}
 
 pub fn clear() void {
     _clear();
@@ -47,5 +67,5 @@ pub fn set_clear_color(color: Color) void {
 }
 
 extern fn _set_clear_color(r: f32, g: f32, b: f32, a: f32) void;
-extern fn _draw(queue: usize, stride: usize, len: usize) void;
+extern fn _render(queue: usize, stride: usize, len: usize) void;
 extern fn _clear() void;

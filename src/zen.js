@@ -6,7 +6,7 @@ async function init() {
     env: {
       _console_log,
       _set_clear_color,
-      _draw,
+      _render,
       _clear,
     },
   });
@@ -31,7 +31,7 @@ function update(t) {
   resizeCanvasToDisplaySize(gl.canvas);
   mod.instance.exports.update(t - prev_time);
 
-  drawTest();
+  // drawTest();
 
   prev_time = t;
   requestAnimationFrame(update);
@@ -52,6 +52,19 @@ function _console_log(msg, len) {
 }
 
 // --------------------------------------------------------------------------- //
+// Assets
+// --------------------------------------------------------------------------- //
+const assets = [];
+
+function addAsset(asset) {
+  return assets.push(asset) - 1;
+}
+
+function getAsset(id) {
+  return assets[id];
+}
+
+// --------------------------------------------------------------------------- //
 // Graphics
 // --------------------------------------------------------------------------- //
 let canvas = undefined;
@@ -63,7 +76,6 @@ let test_program;
 let test_vao;
 
 function initGraphicsTest() {
-  //TEST
   const vert = createShader(
     gl.VERTEX_SHADER,
     `#version 300 es
@@ -99,11 +111,6 @@ function initGraphicsTest() {
     test_program,
     "a_position",
   );
-  var positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-  var positions = [-1, -1, -1, 1, 1, -1, 1, 1, 1, -1, -1, 1];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
   test_vao = createVertexArray([
     {
@@ -113,14 +120,9 @@ function initGraphicsTest() {
       offset: 0,
     },
   ]);
-}
 
-function drawTest() {
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.useProgram(test_program);
-  gl.bindVertexArray(test_vao);
-  gl.drawArrays(gl.TRIANGLES, 0, 6); // offset, count
-  gl.bindVertexArray(null);
+  addAsset(test_program);
+  addAsset(test_vao);
 }
 
 function useTexture(id, sampler) {
@@ -131,10 +133,14 @@ function createVertexArray(attributes) {
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
 
+  var vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  addAsset(vertexBuffer);
+
   // set up attributes
   for (const a of attributes) {
     gl.enableVertexAttribArray(a.location);
-
+    // gl.vertexAttribDivisor(a.location, 1);
     gl.vertexAttribPointer(
       a.location,
       a.size, // can be 1-4 (components)
@@ -145,11 +151,14 @@ function createVertexArray(attributes) {
     );
   }
 
+  // var instanceBuffer = gl.createBuffer();
+  // gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+
   gl.bindVertexArray(null);
   return vao;
 }
 
-function _draw(queuePtr, stride, len) {
+function _render(queuePtr, stride, len) {
   // get draw queue from wasm mem
   const mem = mod.instance.exports.memory;
   const queue = new Uint32Array(mem.buffer, queuePtr, stride * len);
@@ -159,32 +168,58 @@ function _draw(queuePtr, stride, len) {
 
     // program config
     const programId = queue[0 + offset];
-    const vaoId = queue[4 + offset];
+    const vaoId = queue[1 + offset];
 
-    //TODO init gl rendering state
-    // gl.useProgram(program);
-    // gl.bindVertexArray(program);
+    const program = getAsset(1); //TODO dynamic id
+    const vao = getAsset(2); //TODO dynamic id
+
+    if (!program) console.log(`error: unknown program ${programId}`);
+    if (!vao) console.log(`error: unknown vao ${vaoId}`);
+
+    // init gl rendering state
+    gl.useProgram(program);
+    gl.bindVertexArray(vao);
 
     // mesh vertices
-    const geometryBufferPtr = 0;
-    const vertexCount = 0;
+    const geometryBufferPtr = queue[2 + offset];
+    const vertexCount = queue[3 + offset];
 
     // textures to use
-    const textureBufferPtr = 0;
-    const textureCount = 0;
+    const textureBufferPtr = queue[4 + offset];
+    const textureCount = queue[5 + offset];
     //TODO useTexture calls
 
     // instance vertex attribute values
-    const attributeBufferPtr = 0;
-    const instanceCount = 0;
+    const attributeBufferPtr = queue[6 + offset];
+    const instanceCount = queue[7 + offset];
 
     //TODO update vertex buffers (geometry and attributes)
     // attribute layout is included in the VAO
     // zig data will follow that layout to enable direct copying
     // [array of structures format]
 
-    //TODO render triangles
-    // gl.drawArraysInstanced(gl.TRIANGLES, 0, vertexCount, instanceCount);
+    const verts = new Float32Array(
+      mem.buffer,
+      geometryBufferPtr,
+      vertexCount * 2, //TODO get stride from VAO data
+    );
+
+    const vertexBuffer = getAsset(0); //TODO dynamic index
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+    // var instanceBuffer = gl.createBuffer();
+    // gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+
+    // const attributes = new Float32Array(
+    //   mem.buffer,
+    //   attributeBufferPtr,
+    //   instanceCount, //TODO get stride from VAO data
+    // );
+    // gl.bufferData(gl.VER, attributes, gl.STATIC_DRAW);
+
+    // render triangles
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, vertexCount, instanceCount);
     gl.bindVertexArray(null);
   }
 }
