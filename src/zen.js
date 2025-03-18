@@ -19,6 +19,7 @@ async function init() {
 
   initGraphics();
   initGraphicsTest();
+  initGraphicsTest2();
 
   mod.instance.exports.init();
 
@@ -72,9 +73,6 @@ let canvasToDisplaySizeMap = undefined;
 let resizeObserver = undefined;
 let gl = undefined;
 
-let test_program;
-let test_vao;
-
 function initGraphicsTest() {
   const vert = createShader(
     gl.VERTEX_SHADER,
@@ -83,9 +81,7 @@ function initGraphicsTest() {
     out vec3 pos;
 
     void main() {
-
       // gl_Position is a special variable a vertex shader
-      // is responsible for setting
       gl_Position = a_position;
       pos = a_position.xyz;
     }`,
@@ -100,62 +96,125 @@ function initGraphicsTest() {
     out vec4 outColor;
 
     void main() {
-      // Just set the output to a constant reddish-purple
       outColor = vec4(pos, 1);
     }`,
   );
 
-  test_program = createProgram(vert, frag);
+  const test_program = createProgram(vert, frag);
 
   var positionAttributeLocation = gl.getAttribLocation(
     test_program,
     "a_position",
   );
 
-  test_vao = createVertexArray([
-    {
-      location: positionAttributeLocation,
-      size: 2,
-      stride: 0,
-      offset: 0,
-    },
-  ]);
+  const test_vao = createDrawConfig(
+    [
+      {
+        location: positionAttributeLocation,
+        size: 2,
+        stride: 0,
+        offset: 0,
+      },
+    ],
+    [],
+  );
 
   addAsset(test_program);
   addAsset(test_vao);
+}
+
+function initGraphicsTest2() {
+  const vert = createShader(
+    gl.VERTEX_SHADER,
+    `#version 300 es
+    in vec4 a_position;
+    in vec4 pos_offset;
+
+    void main() {
+      // gl_Position is a special variable a vertex shader
+      gl_Position = a_position + pos_offset;
+    }`,
+  );
+
+  const frag = createShader(
+    gl.FRAGMENT_SHADER,
+    `#version 300 es
+    precision highp float;
+
+    out vec4 outColor;
+
+    void main() {
+      outColor = vec4(1, 1, 1, 1);
+    }`,
+  );
+
+  const p = createProgram(vert, frag);
+
+  var positionAttributeLocation = gl.getAttribLocation(p, "a_position");
+  var posOffsetLoc = gl.getAttribLocation(p, "pos_offset");
+
+  const vao = createDrawConfig(
+    [
+      {
+        location: positionAttributeLocation,
+        size: 2,
+        stride: 0,
+        offset: 0,
+      },
+    ],
+    [
+      {
+        location: posOffsetLoc,
+        size: 2,
+        stride: 0,
+        offset: 0,
+      },
+    ],
+  );
+
+  addAsset(p);
+  addAsset(vao);
 }
 
 function useTexture(id, sampler) {
   //TODO if unbound, bind and update sampler value
 }
 
-function createVertexArray(attributes) {
-  const vao = gl.createVertexArray();
-  gl.bindVertexArray(vao);
+function createDrawConfig(modelAttributes, instanceAttributes) {
+  function createBuffer(attributes, divisor) {
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
 
-  var vertexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  addAsset(vertexBuffer);
+    // set up attributes
+    for (const a of attributes) {
+      gl.enableVertexAttribArray(a.location);
 
-  // set up attributes
-  for (const a of attributes) {
-    gl.enableVertexAttribArray(a.location);
-    // gl.vertexAttribDivisor(a.location, 1);
-    gl.vertexAttribPointer(
-      a.location,
-      a.size, // can be 1-4 (components)
-      gl.FLOAT, // 32-bit float
-      false, // do not normalize
-      a.stride, // move forward size * sizeof(type) each iteration to get the next position
-      a.offset, // start at the beginning of the buffer
-    );
+      if (divisor > 0) gl.vertexAttribDivisor(a.location, divisor);
+
+      gl.vertexAttribPointer(
+        a.location,
+        a.size, // can be 1-4 (components)
+        gl.FLOAT, // 32-bit float
+        false, // do not normalize
+        a.stride, // move forward size * sizeof(type) each iteration to get the next position
+        a.offset, // start at the beginning of the buffer
+      );
+    }
+
+    return buf;
   }
 
-  // var instanceBuffer = gl.createBuffer();
-  // gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
-
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const modelBuffer = createBuffer(modelAttributes, 0);
+  const instanceBuffer = createBuffer(instanceAttributes, 1);
   gl.bindVertexArray(null);
-  return vao;
+
+  return {
+    vao,
+    modelBuffer,
+    instanceBuffer,
+  };
 }
 
 function _render(queuePtr, stride, len) {
@@ -168,17 +227,17 @@ function _render(queuePtr, stride, len) {
 
     // program config
     const programId = queue[0 + offset];
-    const vaoId = queue[1 + offset];
+    const drawConfigId = queue[1 + offset];
 
-    const program = getAsset(1); //TODO dynamic id
-    const vao = getAsset(2); //TODO dynamic id
+    const program = getAsset(programId);
+    const drawConfig = getAsset(drawConfigId);
 
     if (!program) console.log(`error: unknown program ${programId}`);
-    if (!vao) console.log(`error: unknown vao ${vaoId}`);
+    if (!drawConfig) console.log(`error: unknown draw config ${drawConfigId}`);
 
     // init gl rendering state
     gl.useProgram(program);
-    gl.bindVertexArray(vao);
+    gl.bindVertexArray(drawConfig.vao);
 
     // mesh vertices
     const geometryBufferPtr = queue[2 + offset];
@@ -193,30 +252,24 @@ function _render(queuePtr, stride, len) {
     const attributeBufferPtr = queue[6 + offset];
     const instanceCount = queue[7 + offset];
 
-    //TODO update vertex buffers (geometry and attributes)
-    // attribute layout is included in the VAO
-    // zig data will follow that layout to enable direct copying
-    // [array of structures format]
-
+    // update vertex buffers (model and instance)
     const verts = new Float32Array(
       mem.buffer,
       geometryBufferPtr,
-      vertexCount * 2, //TODO get stride from VAO data
+      vertexCount * 2, //TODO get stride from draw config data
     );
 
-    const vertexBuffer = getAsset(0); //TODO dynamic index
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, drawConfig.modelBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
 
-    // var instanceBuffer = gl.createBuffer();
-    // gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    const attributes = new Float32Array(
+      mem.buffer,
+      attributeBufferPtr,
+      instanceCount * 2, //TODO get stride from draw config data
+    );
 
-    // const attributes = new Float32Array(
-    //   mem.buffer,
-    //   attributeBufferPtr,
-    //   instanceCount, //TODO get stride from VAO data
-    // );
-    // gl.bufferData(gl.VER, attributes, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, drawConfig.instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, attributes, gl.STATIC_DRAW);
 
     // render triangles
     gl.drawArraysInstanced(gl.TRIANGLES, 0, vertexCount, instanceCount);

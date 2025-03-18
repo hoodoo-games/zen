@@ -14,7 +14,7 @@ pub const Color = math.F32x4;
 
 const DrawCall = extern struct {
     program_id: usize,
-    vao_id: usize,
+    draw_config_id: usize,
     geometry_buffer_ptr: usize,
     vertex_count: usize,
     texture_buffer_ptr: usize,
@@ -39,7 +39,7 @@ fn render() void {
     // TESTING
     draw_queue.append(.{
         .program_id = 0,
-        .vao_id = 1,
+        .draw_config_id = 1,
         .geometry_buffer_ptr = @intFromPtr(&geo_buffer[0]),
         .vertex_count = geo_buffer.len / 2,
         .texture_buffer_ptr = 0,
@@ -48,10 +48,25 @@ fn render() void {
         .instance_count = attr_buffer.len,
     }) catch unreachable;
 
+    const geo_buffer_2 = [_]f32{ -0.1, -0.1, -0.1, 0.1, 0.1, -0.1, 0.1, 0.1, 0.1, -0.1, -0.1, 0.1 };
+    const attr_buffer_2 = [_]f32{ -0.25, 0.25, 0.4, -0.4 };
+
+    // TESTING
+    draw_queue.append(.{
+        .program_id = 2, //TODO dynamic ids
+        .draw_config_id = 3,
+        .geometry_buffer_ptr = @intFromPtr(&geo_buffer_2[0]),
+        .vertex_count = geo_buffer_2.len / 2,
+        .texture_buffer_ptr = 0,
+        .texture_count = 0,
+        .attribute_buffer_ptr = @intFromPtr(&attr_buffer_2[0]),
+        .instance_count = attr_buffer_2.len / 2,
+    }) catch unreachable;
+
     // prevents rendering when draw_queue has invalid pointer
     if (draw_queue.items.len < 1) return;
 
-    _render(@intFromPtr(draw_queue.items.ptr), @sizeOf(DrawCall), draw_queue.items.len);
+    _render(@intFromPtr(draw_queue.items.ptr), @sizeOf(DrawCall) / @sizeOf(usize), draw_queue.items.len);
     draw_queue.clearRetainingCapacity();
 }
 
