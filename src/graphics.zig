@@ -4,6 +4,7 @@ const alloc = std.heap.wasm_allocator;
 
 const math = @import("math.zig");
 const console = @import("console.zig");
+const time = @import("time.zig");
 
 var draw_queue = std.ArrayList(DrawCall).init(alloc);
 
@@ -49,7 +50,10 @@ fn render() void {
     }) catch unreachable;
 
     const geo_buffer_2 = [_]f32{ -0.1, -0.1, -0.1, 0.1, 0.1, -0.1, 0.1, 0.1, 0.1, -0.1, -0.1, 0.1 };
-    const attr_buffer_2 = [_]f32{ -0.25, 0.25, 0.4, -0.4 };
+    var attr_buffer_2 = [_]f32{ -0.25, 0.25, 0.4, -0.4, 0.2, 0.2, -0.2, -0.2 };
+
+    attr_buffer_2[0] += @floatCast(0.1 * @sin(time.time));
+    attr_buffer_2[1] += @floatCast(0.1 * @sin(time.time));
 
     // TESTING
     draw_queue.append(.{

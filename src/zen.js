@@ -185,6 +185,8 @@ function createDrawConfig(modelAttributes, instanceAttributes) {
     var buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
 
+    let stride = 0;
+
     // set up attributes
     for (const a of attributes) {
       gl.enableVertexAttribArray(a.location);
@@ -199,9 +201,14 @@ function createDrawConfig(modelAttributes, instanceAttributes) {
         a.stride, // move forward size * sizeof(type) each iteration to get the next position
         a.offset, // start at the beginning of the buffer
       );
+
+      stride += a.size;
     }
 
-    return buf;
+    return {
+      buf,
+      stride,
+    };
   }
 
   const vao = gl.createVertexArray();
@@ -256,19 +263,19 @@ function _render(queuePtr, stride, len) {
     const verts = new Float32Array(
       mem.buffer,
       geometryBufferPtr,
-      vertexCount * 2, //TODO get stride from draw config data
+      vertexCount * drawConfig.modelBuffer.stride,
     );
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, drawConfig.modelBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, drawConfig.modelBuffer.buf);
     gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
 
     const attributes = new Float32Array(
       mem.buffer,
       attributeBufferPtr,
-      instanceCount * 2, //TODO get stride from draw config data
+      instanceCount * drawConfig.instanceBuffer.stride,
     );
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, drawConfig.instanceBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, drawConfig.instanceBuffer.buf);
     gl.bufferData(gl.ARRAY_BUFFER, attributes, gl.STATIC_DRAW);
 
     // render triangles
