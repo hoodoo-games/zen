@@ -6,6 +6,9 @@ async function init() {
     env: {
       _console_log,
       _set_clear_color,
+      _create_program,
+      _create_draw_context,
+      _compile_shader,
       _render,
       _clear,
     },
@@ -107,7 +110,7 @@ function initGraphicsTest() {
     "a_position",
   );
 
-  const test_vao = createDrawConfig(
+  const test_vao = createDrawContext(
     [
       {
         location: positionAttributeLocation,
@@ -153,7 +156,7 @@ function initGraphicsTest2() {
   var positionAttributeLocation = gl.getAttribLocation(p, "a_position");
   var posOffsetLoc = gl.getAttribLocation(p, "pos_offset");
 
-  const vao = createDrawConfig(
+  const drawCtx = createDrawContext(
     [
       {
         location: positionAttributeLocation,
@@ -173,14 +176,14 @@ function initGraphicsTest2() {
   );
 
   addAsset(p);
-  addAsset(vao);
+  addAsset(drawCtx);
 }
 
 function useTexture(id, sampler) {
   //TODO if unbound, bind and update sampler value
 }
 
-function createDrawConfig(modelAttributes, instanceAttributes) {
+function createDrawContext(modelAttributes, instanceAttributes) {
   function createBuffer(attributes, divisor) {
     var buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -224,6 +227,20 @@ function createDrawConfig(modelAttributes, instanceAttributes) {
   };
 }
 
+function _create_program(vertSrcId, fragSrcId) {
+  return 0; //TODO
+}
+
+function _create_draw_context(programId) {
+  return 0; //TODO
+}
+
+function _compile_shader(src, len, type) {
+  const srcStr = memToStr(src, len, mod.instance.exports.memory);
+  console.log(srcStr);
+  // createShader(type === 0 ? gl.VERTEX_SHADER : gl.FRAGMENT_SHADER);
+}
+
 function _render(queuePtr, stride, len) {
   // get draw queue from wasm mem
   const mem = mod.instance.exports.memory;
@@ -234,13 +251,13 @@ function _render(queuePtr, stride, len) {
 
     // program config
     const programId = queue[0 + offset];
-    const drawConfigId = queue[1 + offset];
+    const drawContextId = queue[1 + offset];
 
     const program = getAsset(programId);
-    const drawConfig = getAsset(drawConfigId);
+    const drawConfig = getAsset(drawContextId);
 
     if (!program) console.log(`error: unknown program ${programId}`);
-    if (!drawConfig) console.log(`error: unknown draw config ${drawConfigId}`);
+    if (!drawConfig) console.log(`error: unknown draw config ${drawContextId}`);
 
     // init gl rendering state
     gl.useProgram(program);
