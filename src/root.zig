@@ -13,7 +13,6 @@ export fn init() void {
     graphics.set_clear_color(math.f32x4(0, 0, 0, 1));
 
     var vert = graphics.Shader.init(.vertex,
-        \\gl_Position is a special variable a vertex shader
         \\gl_Position = a_position;
         \\pos = a_position.xyz;
     , alloc);

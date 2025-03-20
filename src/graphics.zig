@@ -67,7 +67,7 @@ pub const Shader = struct {
 
     pub fn compile(this: *Shader) !void {
         var src = std.ArrayList(u8).init(this.allocator);
-        src.appendSlice("#version 300 es\n") catch unreachable;
+        src.appendSlice("#version 300 es\n\n") catch unreachable;
 
         var line_buf: [256]u8 = @splat(0);
 
@@ -79,15 +79,25 @@ pub const Shader = struct {
 
         // attributes
         for (this.attributes.items) |u| {
-            const line = std.fmt.bufPrint(&line_buf, "in {s} {s};", .{ u.datatype.to_string(), u.name }) catch unreachable;
+            const line = std.fmt.bufPrint(&line_buf, "in {s} {s};\n", .{ u.datatype.to_string(), u.name }) catch unreachable;
             src.appendSlice(line) catch unreachable;
         }
 
+        src.append('\n') catch unreachable;
+
         //TODO varyings
+        for (this.varyings.items) |u| {
+            const line = std.fmt.bufPrint(&line_buf, "out {s} {s};\n", .{ u.datatype.to_string(), u.name }) catch unreachable;
+            src.appendSlice(line) catch unreachable;
+        }
+
+        src.append('\n') catch unreachable;
 
         //TODO functions
 
-        //TODO main
+        // main function
+        const main = std.fmt.bufPrint(&line_buf, "void main() {{\n{s}\n}}", .{this.main_body_src}) catch unreachable;
+        src.appendSlice(main) catch unreachable;
 
         //TODO generate shader glsl src string and compile with JS
         _compile_shader(src.items.ptr, src.items.len, this.kind);
